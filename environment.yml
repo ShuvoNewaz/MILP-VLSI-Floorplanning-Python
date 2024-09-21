@@ -1,0 +1,9 @@
+name: MILP_Floorplan
+channels:
+  - conda-forge
+  - mosek
+dependencies:
+  - numpy==2.1.0
+  - matplotlib==3.9.2
+  - cvxpy==1.5.3
+  - mosek==10.2.3
