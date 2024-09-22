@@ -21,6 +21,7 @@ parser.add_argument('-sa', '--successive_augmentation', type=boolean_string, def
 parser.add_argument('--runtime', type=int, default=10, help='The time the solver is given to solve a subproblem.')
 parser.add_argument('-vis', '--visualize_superblock', type=boolean_string, default=True)
 parser.add_argument('-lp', '--lp_solve', type=boolean_string, default=True, help='Create an lp formatted file for use with the LPSolve tool.')
+parser.add_argument('-size', '--sub_block_size', type=int, default=10, help='Size of the superblock')
 args = parser.parse_args()
 
 cwd = os.getcwd()
@@ -37,7 +38,7 @@ if args.successive_augmentation:
     if args.num_blocks < 10:
         raise ValueError('Successive augmentation does not support system with fewer than 10 blocks.')
     aug = Augment(file)
-    aug.break_problem() # This breaks the large problem into several smaller subproblems
+    aug.break_problem(sub_block_size=args.sub_block_size) # This breaks the large problem into several smaller subproblems
     num_augmentations = len(os.listdir(sa_files_dir))
     bounds = []
     for i in range(1, num_augmentations+1):
@@ -48,7 +49,7 @@ if args.successive_augmentation:
         bounds.append(bound)
         problem.visualize(bound, X, Y, Z, W, H, idx=i, sa=args.successive_augmentation, show_layout=args.visualize_superblock)
         utilizations.append(problem.utilization)
-    problem.save_augmented_dimensions(bounds) # Creates a new source file from the optimized super-blocks
+    problem.save_augmented_dimensions(args.num_blocks, bounds) # Creates a new source file from the optimized super-blocks
 
     # Solve for the entire problem using super-blocks
     src_file_path = os.path.join(sa_files_dir, f'{args.num_blocks}_blocks_sa.ilp')

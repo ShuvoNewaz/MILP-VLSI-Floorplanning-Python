@@ -181,12 +181,12 @@ class SolveILP:
             plt.close()
         return W, H
 
-    def save_augmented_dimensions(self, bounds:List):
+    def save_augmented_dimensions(self, num_blocks:int, bounds):
         """
             args:
                 bounds - the list of bounds for every superblock
         """
-        f = open(os.path.join(sa_files_dir, f'{len(bounds)*10}', f'{len(bounds)*10}_blocks_sa.ilp'), 'w')
+        f = open(os.path.join(sa_files_dir, f'{num_blocks}', f'{num_blocks}_blocks_sa.ilp'), 'w')
         f.write(f'hard - {len(bounds)}\n')
         for bound in bounds:
             f.write(f'{bound},{bound}\n')
