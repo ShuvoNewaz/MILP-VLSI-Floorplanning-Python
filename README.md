@@ -14,4 +14,4 @@ To use this repository, please follow these steps:
 
 The command above takes the file with 30 modules and runs a successive augmentation technique for faster optimization. Each superblock contains 7 modules (if remaining number of modules is greater than 7). The superblocks are given 15 seconds to optimize, and the superblock is visulized after optimized. The final floorplan created using the superblocks is also visualized and the dimensions are stored. It also generates a *.lp formatted file which can be used with the LPSolve tool (https://sourceforge.net/projects/lpsolve/) to optimize. Note: the LPSolve tool takes forever to optimze a 30-module system. Try with a 5 or 10-module system first.
 
-The models are created on the basis of the work by (Sutanthavibul et al).(https://dl.acm.org/doi/abs/10.1145/123186.123255).
+The models are created on the basis of the work by [Sutanthavibul et al].(https://dl.acm.org/doi/abs/10.1145/123186.123255).
