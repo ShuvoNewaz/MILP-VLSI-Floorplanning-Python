@@ -68,7 +68,7 @@ class SolveILP:
                 for j in range(self.num_hard_modules, self.num_total_modules):
                     if j > i:
                         self.constraints.append(self.x[i] + self.z[i] * self.hard_module_height[i] + (1-self.z[i]) * self.hard_module_width[i] <= self.x[j] + self.bound * (self.x_ij[i, j] + self.y_ij[i, j]))
-                        self.constraints.append(self.x[i] - self.w[j-self.num_hard_modules] >= self.x[j] - self.bound * (1 - self.x_ij[i, j] + self.y_ij[i, j]))
+                        self.constraints.append(self.x[i] - self.w[j - self.num_hard_modules] >= self.x[j] - self.bound * (1 - self.x_ij[i, j] + self.y_ij[i, j]))
                         self.constraints.append(self.y[i] + self.z[i] * self.hard_module_width[i] + (1-self.z[i]) * self.hard_module_height[i] <= self.y[j] + self.bound * (1 + self.x_ij[i, j] - self.y_ij[i, j]))
                         self.constraints.append(self.y[i] - (self.gradient[j-self.num_hard_modules] * self.w[j-self.num_hard_modules] + self.intercept[j-self.num_hard_modules]) >= self.y[j] - self.bound * (2 - self.x_ij[i, j] - self.y_ij[i, j]))
 

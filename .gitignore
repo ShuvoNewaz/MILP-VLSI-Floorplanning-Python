@@ -1,3 +1,4 @@
-results
+results/*.txt
 spec_files/successive_augmentation
 lp_solve_files
+readme.ipynb
