@@ -1,7 +1,6 @@
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
-from src.solve import SolveILP
+from src.solve.solve import SolveILP
 from src.augment import Augment
 import os
 import shutil
@@ -20,7 +19,7 @@ parser.add_argument('-u', '--underestimation', type=boolean_string, default=True
 parser.add_argument('-sa', '--successive_augmentation', type=boolean_string, default=False)
 parser.add_argument('--runtime', type=int, default=10, help='The time the solver is given to solve a subproblem.')
 parser.add_argument('-vis', '--visualize_superblock', type=boolean_string, default=True)
-parser.add_argument('-lp', '--lp_solve', type=boolean_string, default=True, help='Create an lp formatted file for use with the LPSolve tool.')
+parser.add_argument('-lp', '--save_lp', type=boolean_string, default=True, help='Create an lp formatted file for use with the LPSolve tool.')
 parser.add_argument('-size', '--sub_block_size', type=int, default=10, help='Size of the superblock')
 args = parser.parse_args()
 
@@ -41,9 +40,12 @@ if args.successive_augmentation:
     aug.break_problem(sub_block_size=args.sub_block_size) # This breaks the large problem into several smaller subproblems
     num_augmentations = len(os.listdir(sa_files_dir))
     bounds = []
-    for i in range(1, num_augmentations+1):
-        src_file_path = os.path.join(sa_files_dir, f'{args.num_blocks}_{i}.ilp') # Takes a super-block
-        problem = SolveILP(src_file_path, args.num_blocks, underestimation=args.underestimation) # Solves for the super-block
+    for i in range(1, num_augmentations + 1):
+        src_file_path = os.path.join(sa_files_dir,
+                                     f'{args.num_blocks}_{i}.ilp') # Takes a super-block
+        problem = SolveILP(src_file_path,
+                           underestimation=args.underestimation,
+                           save_lp=False) # Solves for the super-block
         problem.create_constraints()
         bound, X, Y, Z, W, H = problem.solve(run_time=args.runtime)
         bounds.append(bound)
@@ -55,11 +57,12 @@ if args.successive_augmentation:
     src_file_path = os.path.join(sa_files_dir, f'{args.num_blocks}_blocks_sa.ilp')
 else:
     src_file_path = os.path.join(spec_files_dir, file)
-problem = SolveILP(src_file_path, args.num_blocks, underestimation=args.underestimation)
+problem = SolveILP(src_file_path,
+                   underestimation=args.underestimation,
+                   save_lp=args.save_lp)
 problem.create_constraints()
 bound, X, Y, Z, W, H = problem.solve(run_time=args.runtime)
-problem.visualize(bound, X, Y, Z, W, H, glob=True, sa=args.successive_augmentation, utilizations=utilizations)
-problem.save_final_dimensions(bound, args.num_blocks, args.successive_augmentation)
-
-if args.lp_solve:
-    problem.problem.create_ilp_file()
+problem.visualize(bound, X, Y, Z, W, H, glob=True,
+                  sa=args.successive_augmentation, utilizations=utilizations)
+problem.save_final_dimensions(bound, args.num_blocks,
+                              args.successive_augmentation)

@@ -1,4 +1,4 @@
-name: MILP_Floorplan
+name: MILP_Floorplan_Python
 channels:
   - conda-forge
   - mosek
