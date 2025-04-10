@@ -4,6 +4,9 @@ from src.solve.solve import SolveILP
 from src.augment import Augment
 import os
 import shutil
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 def boolean_string(s):
@@ -39,7 +42,7 @@ if args.successive_augmentation:
     aug = Augment(file)
     aug.break_problem(sub_block_size=args.sub_block_size) # This breaks the large problem into several smaller subproblems
     num_augmentations = len(os.listdir(sa_files_dir))
-    bounds = []
+    chip_heights, chip_widths = [], []
     for i in range(1, num_augmentations + 1):
         src_file_path = os.path.join(sa_files_dir,
                                      f'{args.num_blocks}_{i}.ilp') # Takes a super-block
@@ -47,11 +50,12 @@ if args.successive_augmentation:
                            underestimation=args.underestimation,
                            save_lp=False) # Solves for the super-block
         problem.create_constraints()
-        bound, X, Y, Z, W, H = problem.solve(run_time=args.runtime)
-        bounds.append(bound)
-        problem.visualize(bound, X, Y, Z, W, H, idx=i, sa=args.successive_augmentation, show_layout=args.visualize_superblock)
+        chip_height, chip_width, X, Y, Z, W, H = problem.solve(run_time=args.runtime)
+        chip_heights.append(chip_height)
+        chip_widths.append(chip_width)
+        problem.visualize(chip_height, chip_width, X, Y, Z, W, H, idx=i, sa=args.successive_augmentation, show_layout=args.visualize_superblock)
         utilizations.append(problem.utilization)
-    problem.save_augmented_dimensions(args.num_blocks, bounds) # Creates a new source file from the optimized super-blocks
+    problem.save_augmented_dimensions(args.num_blocks, chip_heights, chip_widths) # Creates a new source file from the optimized super-blocks
 
     # Solve for the entire problem using super-blocks
     src_file_path = os.path.join(sa_files_dir, f'{args.num_blocks}_blocks_sa.ilp')
@@ -61,8 +65,8 @@ problem = SolveILP(src_file_path,
                    underestimation=args.underestimation,
                    save_lp=args.save_lp)
 problem.create_constraints()
-bound, X, Y, Z, W, H = problem.solve(run_time=args.runtime)
-problem.visualize(bound, X, Y, Z, W, H, glob=True,
+chip_height, chip_width, X, Y, Z, W, H = problem.solve(run_time=args.runtime)
+problem.visualize(chip_height, chip_width, X, Y, Z, W, H, glob=True,
                   sa=args.successive_augmentation, utilizations=utilizations)
-problem.save_final_dimensions(bound, args.num_blocks,
+problem.save_final_dimensions(chip_height, chip_width, args.num_blocks,
                               args.successive_augmentation)

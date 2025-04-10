@@ -96,7 +96,7 @@ $$y_i - m_j w_j + c_j \ge y_j - M (2 - x_{ij} - y_{ij})$$
 
 ### Integer Constraints
 
-$z$ determines hard module rotation and $x_{ij}, y_{ij}$ determines if modules $i$ and $j$ are physically connected.
+$z$ determines hard module rotation and $x_{ij}, y_{ij}$ determine the relative position of module $j$ with respect to module $i$ . For example, $x_{ij}=1$ means module $j$ is to the right of module $i$.
 
 $$z_i=[0,1]$$
 $$x_{ij}=[0,1]$$

@@ -105,35 +105,39 @@ class SolveILP:
     def solve(self, run_time, solver='MOSEK', verbose=False):
         model = cp.Problem(self.objective, self.constraints)
         model.solve(solver=solver, verbose=verbose, mosek_params={mosek.dparam.optimizer_max_time: run_time})
-        if self.problem.hard_exists and self.problem.soft_exists:
+
+        W, H = np.zeros(self.num_total_modules), np.zeros(self.num_total_modules)
+        if self.problem.hard_exists:
+            self.z = self.z.value
+            rotate_index = self.z > 0.5
+            W[:self.num_hard_modules] = self.hard_module_width
+            W[:self.num_hard_modules][rotate_index] = self.hard_module_height[rotate_index]
+
+            H[:self.num_hard_modules] = self.hard_module_height
+            H[:self.num_hard_modules][rotate_index] = self.hard_module_width[rotate_index]
+        if self.problem.soft_exists:
+            self.w = self.w.value
             for i in range(self.num_soft_modules):
-                self.h[i] = self.gradient[i] * self.w.value[i] + self.intercept[i]
+                self.h[i] = self.gradient[i] * self.w[i] + self.intercept[i]
+            W[self.num_hard_modules:self.num_total_modules] = self.w
+            H[self.num_hard_modules:self.num_total_modules] = self.h
+        
+        X, Y, Z = self.x.value, self.y.value, self.z
 
-            return model.value, self.x.value, \
-                self.y.value, self.z.value, self.w.value, self.h
-        elif self.problem.hard_exists and not self.problem.soft_exists:
+        # Shift modules if doesn't start from 0
+        X -= X.min()
+        Y -= Y.min()
 
-            return model.value, self.x.value, \
-                self.y.value, self.z.value, self.w, self.h
+        # Get corrected chip dimensions
+        chip_height = (Y + H).max()
+        chip_width = (X + W).max()
 
-        elif not self.problem.hard_exists and self.problem.soft_exists:
-            for i in range(self.num_soft_modules):
-                self.h[i] = self.gradient[i] * self.w.value[i] + self.intercept[i]
+        return chip_height, chip_width, X, Y, Z, W, H # W and H are soft module widths and heights
 
-        return model.value, self.x.value, \
-            self.y.value, self.z, self.w.value, self.h    # W and H are soft module widths and heights
-
-    def visualize(self, bound, X, Y, Z, W, H, idx=1,
+    def visualize(self, chip_height, chip_width, X, Y, Z, W, H, idx=1,
                   glob=False, sa=True,
-                  show_layout=True, utilizations=[1]): # W and H are soft module widths and heights
-        if self.problem.hard_exists and self.problem.soft_exists:
-            W = np.concatenate((self.hard_module_width, W))
-            H = np.concatenate((self.hard_module_height, H))
-        elif self.problem.hard_exists and not self.problem.soft_exists:
-            W = self.hard_module_width
-            H = self.hard_module_height
-
-        chip_area = bound ** 2
+                  show_layout=True, utilizations=[1]):
+        chip_area = chip_height * chip_width
         self.utilization = (np.sum(W * H) / chip_area) * np.prod(utilizations)
 
         label = np.arange(self.num_total_modules) + 1
@@ -142,47 +146,43 @@ class SolveILP:
         for i, txt in enumerate(label):
             if i < self.num_hard_modules:
                 if Z[i] >= 0.9: # Sometimes get 1.01/0.99
-                    ax.add_patch(Rectangle((X[i], Y[i]), H[i], W[i], color='red'))
-                    ax.add_patch(Rectangle((X[i], Y[i]), H[i], W[i], color='black', fill=False))
-                    ax.annotate(text=txt, xy=(X[i], Y[i]), xytext=(X[i]+H[i]/2, Y[i]+W[i]/2))
+                    ax.add_patch(Rectangle((X[i], Y[i]), W[i], H[i], color='red'))
                 else:
                     ax.add_patch(Rectangle((X[i], Y[i]), W[i], H[i], color='green'))
-                    ax.add_patch(Rectangle((X[i], Y[i]), W[i], H[i], color='black', fill=False))
-                    ax.annotate(text=txt, xy=(X[i], Y[i]), xytext=(X[i]+W[i]/2, Y[i]+H[i]/2))
             else:
                 ax.add_patch(Rectangle((X[i], Y[i]), W[i], H[i], color='yellow'))
-                ax.add_patch(Rectangle((X[i], Y[i]), W[i], H[i], color='black', fill=False))
-                ax.annotate(text=txt, xy=(X[i], Y[i]), xytext=(X[i]+W[i]/2, Y[i]+H[i]/2))
+            ax.add_patch(Rectangle((X[i], Y[i]), W[i], H[i], color='black', fill=False))
+            ax.annotate(text=txt, xy=(X[i], Y[i]), xytext=(X[i]+W[i]/2, Y[i]+H[i]/2))
             if sa==True:
                 if glob==False:
-                        plt.title('Local floorplan for %d-th sub-block: Chip Height = %.4f, Chip Area = %d\nUtilization = %.2f percent' % (idx, bound, chip_area, self.utilization * 100))
+                    plt.title('Local floorplan for %d-th sub-block: Chip Height = %.4f, Chip Area = %d\nUtilization = %.2f percent' % (idx, chip_height, chip_area, self.utilization * 100))
                 else:
-                        plt.title('Global floorplan for including all sub-blocks: Chip Height = %.4f, Chip Area = %d\nUtilization = %.2f percent' % (bound, chip_area, self.utilization * 100))
+                    plt.title('Global floorplan for including all sub-blocks: Chip Height = %.4f, Chip Area = %d\nUtilization = %.2f percent' % (chip_height, chip_area, self.utilization * 100))
             else:
-                plt.title('Direct floorplan: Chip Height = %.4f, Chip Area = %d\nUtilization = %.2f percent' % (bound, chip_area, self.utilization * 100))
+                plt.title('Direct floorplan: Chip Height = %.4f, Chip Area = %d\nUtilization = %.2f percent' % (chip_height, chip_area, self.utilization * 100))
 
-        ax.set_xlim(0, bound)
-        ax.set_ylim(0, bound)
+        ax.set_xlim(0, chip_width)
+        ax.set_ylim(0, chip_height)
         if show_layout:
             plt.show(block=True)
         else:
             plt.close()
         return W, H
 
-    def save_augmented_dimensions(self, num_blocks:int, bounds):
+    def save_augmented_dimensions(self, num_blocks:int, chip_heights, chip_widths):
         """
             args:
                 bounds - the list of bounds for every superblock
         """
         f = open(os.path.join(sa_files_dir, f'{num_blocks}', f'{num_blocks}_blocks_sa.ilp'), 'w')
-        f.write(f'hard - {len(bounds)}\n')
-        for bound in bounds:
-            f.write(f'{bound},{bound}\n')
+        f.write(f'hard - {len(chip_heights)}\n')
+        for chip_height, chip_width in zip(chip_heights, chip_widths):
+            f.write(f'{chip_width},{chip_height}\n')
         f.close()
 
-    def save_final_dimensions(self, bound, num_blocks, sa=True):
+    def save_final_dimensions(self, chip_height, chip_width, num_blocks, sa=True):
         res_file_name = f'{num_blocks}_sa_{sa}_dimensions.txt'
         res_file_path = os.path.join(results_dir, res_file_name)
         f = open(res_file_path, 'w')
-        f.write(f'{bound},{bound}\n')
+        f.write(f'{chip_width},{chip_height}\n')
         f.close()
