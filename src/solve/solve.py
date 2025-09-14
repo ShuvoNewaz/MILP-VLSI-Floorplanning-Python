@@ -1,5 +1,7 @@
 import numpy as np
 import cvxpy as cp
+# import matplotlib
+# matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import mosek
@@ -133,12 +135,15 @@ class SolveILP:
         chip_width = (X + W).max()
 
         return chip_height, chip_width, X, Y, Z, W, H # W and H are soft module widths and heights
+    
+    def compute_utilization(self, chip_height, chip_width, H, W, utilizations=[1]):
+        chip_area = chip_height * chip_width
+        self.utilization = (np.sum(W * H * utilizations) / chip_area)
 
     def visualize(self, chip_height, chip_width, X, Y, Z, W, H, idx=1,
                   glob=False, sa=True,
-                  show_layout=True, utilizations=[1]):
+                  show_layout=True):
         chip_area = chip_height * chip_width
-        self.utilization = (np.sum(W * H) / chip_area) * np.prod(utilizations)
 
         label = np.arange(self.num_total_modules) + 1
         plt.ion()
@@ -164,25 +169,25 @@ class SolveILP:
         ax.set_xlim(0, chip_width)
         ax.set_ylim(0, chip_height)
         if show_layout:
-            plt.show(block=True)
+            plt.show(block=sa and glob or not sa)
         else:
             plt.close()
         return W, H
 
-    def save_augmented_dimensions(self, num_blocks:int, chip_heights, chip_widths):
-        """
-            args:
-                bounds - the list of bounds for every superblock
-        """
-        f = open(os.path.join(sa_files_dir, f'{num_blocks}', f'{num_blocks}_blocks_sa.ilp'), 'w')
-        f.write(f'hard - {len(chip_heights)}\n')
-        for chip_height, chip_width in zip(chip_heights, chip_widths):
-            f.write(f'{chip_width},{chip_height}\n')
-        f.close()
-
-    def save_final_dimensions(self, chip_height, chip_width, num_blocks, sa=True):
-        res_file_name = f'{num_blocks}_sa_{sa}_dimensions.txt'
-        res_file_path = os.path.join(results_dir, res_file_name)
-        f = open(res_file_path, 'w')
+def save_augmented_dimensions(num_blocks:int, chip_heights, chip_widths):
+    """
+        args:
+            bounds - the list of bounds for every superblock
+    """
+    f = open(os.path.join(sa_files_dir, f'{num_blocks}', f'{num_blocks}_blocks_sa.ilp'), 'w')
+    f.write(f'hard - {len(chip_heights)}\n')
+    for chip_height, chip_width in zip(chip_heights, chip_widths):
         f.write(f'{chip_width},{chip_height}\n')
-        f.close()
+    f.close()
+
+def save_final_dimensions(chip_height, chip_width, num_blocks, sa=True):
+    res_file_name = f'{num_blocks}_sa_{sa}_dimensions.txt'
+    res_file_path = os.path.join(results_dir, res_file_name)
+    f = open(res_file_path, 'w')
+    f.write(f'{chip_width},{chip_height}\n')
+    f.close()
